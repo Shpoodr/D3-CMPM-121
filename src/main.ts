@@ -22,11 +22,30 @@ const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const CACHE_SPAWN_PROBABILITY = 0.1;
+const INTERACTION_DISTANCE = 3;
 
 /* 1) Created map html element for the site */
 const mapElement = document.createElement("div");
 mapElement.id = "map";
 document.body.append(mapElement);
+
+/* creating player UI and scoring */
+const inventoryDiv = document.createElement("div");
+inventoryDiv.id = "inventory";
+document.body.append(inventoryDiv);
+
+//inventory state variable
+let playerInventory: number | null = null;
+
+//function for updating the player inventory UI
+function updatePlayerUI() {
+  if (playerInventory == null) {
+    inventoryDiv.innerHTML = "Holding: Nothing";
+  } else {
+    inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
+  }
+}
+updatePlayerUI();
 
 //class room log/lat for the map to reference
 const CLASSROOM_LATLNG = leaflet.latLng(
@@ -72,10 +91,11 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
     }
 
     //creating a unique key for each cell for the interface
-    const cellKey = `${i}, ${j}`;
+
     const initialState: CellState = {
       value: initalValue,
     };
+    const cellKey = `${i}, ${j}`;
     cellData.set(cellKey, initialState);
 
     //calculating the bounds
@@ -88,29 +108,54 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
       ],
     ]);
 
-    //changing the style of the cell if there is a token
-    const state = cellData.get(cellKey)!;
-    const cellOptions: leaflet.PathOptions = {
-      color: "#0000ff",
-      weight: 1,
-      fillOpacity: 0.5,
-    };
-
-    if (state.value !== null) {
-      cellOptions.color = "#00ff00";
-      cellOptions.fillOpacity = 0.3;
-    }
-
-    const cellRect = leaflet.rectangle(bounds, cellOptions);
+    const cellRect = leaflet.rectangle(bounds, {});
     cellRect.addTo(map);
 
-    if (state.value !== null) {
-      cellRect.bindTooltip(`Value: ${state.value}`);
-    }
+    updateCellStyle(cellRect, initialState);
 
     //click handling
     cellRect.on("click", () => {
-      console.log(`Clicked cell: ${i}, ${j}, Value: ${state?.value}`);
+      const state = cellData.get(cellKey)!;
+
+      //check interaction distance
+      if (
+        Math.abs(i) > INTERACTION_DISTANCE || Math.abs(j) > INTERACTION_DISTANCE
+      ) {
+        console.log("Too far");
+        return;
+      }
+
+      if (playerInventory === null) {
+        //picking up a token
+        if (state.value !== null) {
+          playerInventory! = state.value;
+          state.value = null;
+        }
+      } else {
+        //for crafting
+        if (state.value !== null && state.value === playerInventory) {
+          state.value *= 2;
+          playerInventory = null;
+        }
+      }
+      updatePlayerUI();
+      updateCellStyle(cellRect, state);
     });
+  }
+}
+//seperating the cell style into a function for better updates
+function updateCellStyle(cellRect: leaflet.Rectangle, state: CellState) {
+  if (state.value !== null) {
+    cellRect.setStyle({
+      color: "#00ff00",
+      fillOpacity: 0.3,
+    });
+    cellRect.bindTooltip(`Value: ${state.value}`);
+  } else {
+    cellRect.setStyle({
+      color: "#0000ff",
+      fillOpacity: 0.05,
+    });
+    cellRect.unbindTooltip();
   }
 }

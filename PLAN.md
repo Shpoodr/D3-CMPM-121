@@ -22,10 +22,10 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] Lock the map view
 - [x] Make cells clickable
 - [x] Create a data model for each cell to store the state
-- [ ] Create the spawning function (immpliment the luck function)
-- [ ] Create the player inventory and a ui element for the status
-- [ ] Click handlers on the cells
-- [ ] Add the interaction logic if in range of cell
-  - [ ] pickup logic/crafting logic then update visuals
+- [x] Impliment the luck function to determine which cells have tokens
+- [x] Create the player inventory and a ui element for the status
+- [x] Click handlers on the cells
+- [x] Add the interaction logic if in range of cell
+  - [x] pickup logic/crafting logic then update visuals
 
 ## D3.b
