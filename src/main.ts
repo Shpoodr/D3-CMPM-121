@@ -9,6 +9,7 @@ import "./style.css"; // student-controlled page style
 import "./_leafletWorkaround.ts"; // fixes for missing Leaflet images
 
 // Import our luck function
+import luck from "./_luck.ts";
 
 //interface for each cell in the game
 interface CellState {
@@ -20,6 +21,7 @@ const cellData = new Map<string, CellState>();
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
 const GAMEPLAY_ZOOM_LEVEL = 19;
+const CACHE_SPAWN_PROBABILITY = 0.1;
 
 /* 1) Created map html element for the site */
 const mapElement = document.createElement("div");
@@ -55,24 +57,28 @@ const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
 playerMarker.bindTooltip("That's you!!");
 playerMarker.addTo(map);
 
-/* 5) funtion to spawn in rectangles to the map */
-
-const cellStyle = {
-  color: "#ff0000",
-  weight: 2,
-  fillOpacity: 0.1,
-};
+/* 5) "funtion" to spawn in rectangles to the map */
 
 /* loop to create more than one cell */
 for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
   for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
+    //spawning logic
+    let initalValue: number | null = null;
+
+    //seeing if the cell will spawn a token
+    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
+      const valueSituation = [i, j, "initialValue"].toString();
+      initalValue = Math.floor(luck(valueSituation) * 10) + 1;
+    }
+
     //creating a unique key for each cell for the interface
     const cellKey = `${i}, ${j}`;
     const initialState: CellState = {
-      value: null,
+      value: initalValue,
     };
     cellData.set(cellKey, initialState);
 
+    //calculating the bounds
     const origin = CLASSROOM_LATLNG;
     const bounds = leaflet.latLngBounds([
       [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
@@ -81,12 +87,29 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
         origin.lng + (j + 1) * TILE_DEGREES,
       ],
     ]);
-    const cellRect = leaflet.rectangle(bounds, cellStyle);
+
+    //changing the style of the cell if there is a token
+    const state = cellData.get(cellKey)!;
+    const cellOptions: leaflet.PathOptions = {
+      color: "#0000ff",
+      weight: 1,
+      fillOpacity: 0.5,
+    };
+
+    if (state.value !== null) {
+      cellOptions.color = "#00ff00";
+      cellOptions.fillOpacity = 0.3;
+    }
+
+    const cellRect = leaflet.rectangle(bounds, cellOptions);
     cellRect.addTo(map);
+
+    if (state.value !== null) {
+      cellRect.bindTooltip(`Value: ${state.value}`);
+    }
 
     //click handling
     cellRect.on("click", () => {
-      const state = cellData.get(cellKey);
       console.log(`Clicked cell: ${i}, ${j}, Value: ${state?.value}`);
     });
   }

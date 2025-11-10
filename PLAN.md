@@ -29,7 +29,3 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
   - [ ] pickup logic/crafting logic then update visuals
 
 ## D3.b
-
-...
-
-### 
