@@ -17,9 +17,16 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] delete everything in main.ts
 - [x] put a basic leaflet map on the screen
 - [x] draw the player's location on the map
-- [ ] draw a rectangle representing one cell on the map
-- [ ] use loops to draw a whole grid of cells on the map
-- ...
+- [x] draw a rectangle representing one cell on the map
+- [x] use loops to draw a whole grid of cells on the map
+- [x] Lock the map view
+- [x] Make cells clickable
+- [x] Create a data model for each cell to store the state
+- [ ] Create the spawning function (immpliment the luck function)
+- [ ] Create the player inventory and a ui element for the status
+- [ ] Click handlers on the cells
+- [ ] Add the interaction logic if in range of cell
+  - [ ] pickup logic/crafting logic then update visuals
 
 ## D3.b
 

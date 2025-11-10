@@ -10,6 +10,17 @@ import "./_leafletWorkaround.ts"; // fixes for missing Leaflet images
 
 // Import our luck function
 
+//interface for each cell in the game
+interface CellState {
+  value: number | null;
+}
+const cellData = new Map<string, CellState>();
+
+//GamePlay perameters
+const TILE_DEGREES = 1e-4;
+const NEIGHBORHOOD_SIZE = 8;
+const GAMEPLAY_ZOOM_LEVEL = 19;
+
 /* 1) Created map html element for the site */
 const mapElement = document.createElement("div");
 mapElement.id = "map";
@@ -24,7 +35,11 @@ const CLASSROOM_LATLNG = leaflet.latLng(
 /* 2) initialized the map with class room location */
 const map = leaflet.map(mapElement, {
   center: CLASSROOM_LATLNG,
-  zoom: 17,
+  zoom: GAMEPLAY_ZOOM_LEVEL,
+  minZoom: GAMEPLAY_ZOOM_LEVEL,
+  maxZoom: GAMEPLAY_ZOOM_LEVEL,
+  zoomControl: false,
+  scrollWheelZoom: false,
 });
 
 /* 3) added the background image to the map */
@@ -41,13 +56,6 @@ playerMarker.bindTooltip("That's you!!");
 playerMarker.addTo(map);
 
 /* 5) funtion to spawn in rectangles to the map */
-const mapCenter: leaflet.LatLngExpression = [36.9979, -122.057];
-const TILE_DEGREES = 1e-4;
-
-const cellBounds: leaflet.LatLngBoundsExpression = [
-  [mapCenter[0], mapCenter[1]],
-  [mapCenter[0] + TILE_DEGREES, mapCenter[1] + TILE_DEGREES],
-];
 
 const cellStyle = {
   color: "#ff0000",
@@ -55,5 +63,31 @@ const cellStyle = {
   fillOpacity: 0.1,
 };
 
-const cellRectangle = leaflet.rectangle(cellBounds, cellStyle);
-cellRectangle.addTo(map);
+/* loop to create more than one cell */
+for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
+  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
+    //creating a unique key for each cell for the interface
+    const cellKey = `${i}, ${j}`;
+    const initialState: CellState = {
+      value: null,
+    };
+    cellData.set(cellKey, initialState);
+
+    const origin = CLASSROOM_LATLNG;
+    const bounds = leaflet.latLngBounds([
+      [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
+      [
+        origin.lat + (i + 1) * TILE_DEGREES,
+        origin.lng + (j + 1) * TILE_DEGREES,
+      ],
+    ]);
+    const cellRect = leaflet.rectangle(bounds, cellStyle);
+    cellRect.addTo(map);
+
+    //click handling
+    cellRect.on("click", () => {
+      const state = cellData.get(cellKey);
+      console.log(`Clicked cell: ${i}, ${j}, Value: ${state?.value}`);
+    });
+  }
+}
