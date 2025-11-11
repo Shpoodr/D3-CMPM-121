@@ -19,10 +19,23 @@ const cellData = new Map<string, CellState>();
 
 //GamePlay perameters
 const TILE_DEGREES = 1e-4;
-const NEIGHBORHOOD_SIZE = 8;
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 const INTERACTION_DISTANCE = 3;
+
+//conversion function for Lat and Lng anchored to (0, 0)
+function latlngToCell(latLng: leaflet.LatLng): { i: number; j: number } {
+  const i = Math.floor(latLng.lat / TILE_DEGREES);
+  const j = Math.floor(latLng.lng / TILE_DEGREES);
+  return { i, j };
+}
+
+//conversion of cellID to its geographical latLngBounds
+function cellToLatLngBounds(i: number, j: number): leaflet.LatLngBounds {
+  const sw = leaflet.latLng(i * TILE_DEGREES, j * TILE_DEGREES);
+  const ne = leaflet.latLng((i + 1) * TILE_DEGREES, (j + 1) * TILE_DEGREES);
+  return leaflet.latLngBounds(sw, ne);
+}
 
 /* 1) Created map html element for the site */
 const mapElement = document.createElement("div");
@@ -57,11 +70,11 @@ const CLASSROOM_LATLNG = leaflet.latLng(
 const map = leaflet.map(mapElement, {
   center: CLASSROOM_LATLNG,
   zoom: GAMEPLAY_ZOOM_LEVEL,
-  minZoom: GAMEPLAY_ZOOM_LEVEL,
-  maxZoom: GAMEPLAY_ZOOM_LEVEL,
   zoomControl: false,
-  scrollWheelZoom: false,
 });
+
+//creating a grifLayer for all the rects to be easily destoryed and added
+const gridLayer = leaflet.layerGroup().addTo(map);
 
 /* 3) added the background image to the map */
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -76,73 +89,84 @@ const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
 playerMarker.bindTooltip("That's you!!");
 playerMarker.addTo(map);
 
-/* 5) "funtion" to spawn in rectangles to the map */
+/* 5) funtion to spawn in rectangles to the map */
+function drawGrid() {
+  //clearing all old rectangles and making this memoryless
+  gridLayer.clearLayers();
+  cellData.clear();
 
-/* loop to create more than one cell */
-for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-    //spawning logic
-    let initalValue: number | null = null;
+  const bounds = map.getBounds();
 
-    //seeing if the cell will spawn a token
-    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      const valueSituation = [i, j, "initialValue"].toString();
-      initalValue = Math.floor(luck(valueSituation) * 10) + 1;
+  const sw = latlngToCell(bounds.getSouthWest());
+  const ne = latlngToCell(bounds.getNorthEast());
+
+  for (let i = sw.i; i <= ne.i; i++) {
+    for (let j = sw.j; j <= ne.j; j++) {
+      createCell(i, j);
     }
-
-    //creating a unique key for each cell for the interface
-
-    const initialState: CellState = {
-      value: initalValue,
-    };
-    const cellKey = `${i}, ${j}`;
-    cellData.set(cellKey, initialState);
-
-    //calculating the bounds
-    const origin = CLASSROOM_LATLNG;
-    const bounds = leaflet.latLngBounds([
-      [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
-      [
-        origin.lat + (i + 1) * TILE_DEGREES,
-        origin.lng + (j + 1) * TILE_DEGREES,
-      ],
-    ]);
-
-    const cellRect = leaflet.rectangle(bounds, {});
-    cellRect.addTo(map);
-
-    updateCellStyle(cellRect, initialState);
-
-    //click handling
-    cellRect.on("click", () => {
-      const state = cellData.get(cellKey)!;
-
-      //check interaction distance
-      if (
-        Math.abs(i) > INTERACTION_DISTANCE || Math.abs(j) > INTERACTION_DISTANCE
-      ) {
-        console.log("Too far");
-        return;
-      }
-
-      if (playerInventory === null) {
-        //picking up a token
-        if (state.value !== null) {
-          playerInventory! = state.value;
-          state.value = null;
-        }
-      } else {
-        //for crafting
-        if (state.value !== null && state.value === playerInventory) {
-          state.value *= 2;
-          playerInventory = null;
-        }
-      }
-      updatePlayerUI();
-      updateCellStyle(cellRect, state);
-    });
   }
 }
+
+//create cell function that will handle all this logic and interation of cells
+function createCell(i: number, j: number) {
+  const cellKey = `${i}, ${j}`;
+
+  //handling initial value of the tokens in caches
+  let initalValue: number | null = null;
+  if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
+    const valueSituation = [i, j, "initialValue"].toString();
+    initalValue = Math.floor(luck(valueSituation) * 10) + 1;
+  }
+
+  const state: CellState = { value: initalValue };
+  cellData.set(cellKey, state);
+
+  //handle the drawing logic
+  const cellBounds = cellToLatLngBounds(i, j);
+  const cellRect = leaflet.rectangle(cellBounds, {});
+  cellRect.addTo(gridLayer);
+  updateCellStyle(cellRect, state);
+
+  cellRect.on("click", () => {
+    handleCellClick(i, j, cellRect);
+  });
+}
+
+//function for handling all the clicks
+function handleCellClick(i: number, j: number, cellRect: leaflet.Rectangle) {
+  const cellKey = `${i}, ${j}`;
+  const currentState = cellData.get(cellKey);
+  if (currentState === undefined) return;
+
+  //check interaction distance
+  const playerLatLng = playerMarker.getLatLng();
+  const playerCell = latlngToCell(playerLatLng);
+
+  if (
+    Math.abs(i - playerCell.i) > INTERACTION_DISTANCE ||
+    Math.abs(j - playerCell.j) > INTERACTION_DISTANCE
+  ) {
+    console.log("Too far away!!");
+    return;
+  }
+
+  if (playerInventory === null) {
+    //picking up a token
+    if (currentState.value !== null) {
+      playerInventory! = currentState.value;
+      currentState.value = null;
+    }
+  } else {
+    //for crafting
+    if (currentState.value !== null && currentState.value === playerInventory) {
+      currentState.value *= 2;
+      playerInventory = null;
+    }
+  }
+  updatePlayerUI();
+  updateCellStyle(cellRect, currentState);
+}
+
 //seperating the cell style into a function for better updates
 function updateCellStyle(cellRect: leaflet.Rectangle, state: CellState) {
   if (state.value !== null) {
@@ -159,3 +183,7 @@ function updateCellStyle(cellRect: leaflet.Rectangle, state: CellState) {
     cellRect.unbindTooltip();
   }
 }
+
+//telling the map to draw the dynamic grid
+map.on("moveend", drawGrid);
+drawGrid();

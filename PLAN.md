@@ -11,7 +11,7 @@
 Key technical challenge: Can you assemble a map-based user interface using the Leaflet mapping framework?
 Key gameplay challenge: Can players collect and craft tokens from nearby locations to finally make one of sufficiently high value?
 
-### Steps
+### Steps.a
 
 - [x] copy main.ts to reference.ts for future reference
 - [x] delete everything in main.ts
@@ -28,4 +28,16 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] Add the interaction logic if in range of cell
   - [x] pickup logic/crafting logic then update visuals
 
-## D3.b
+## D3.b (player movement and global grid)
+
+Major refactoring to be done in this step. These additions will change the static grid system that I have going currently
+to a more global system that uses the whole planet not a set area. Also will be adding player movement.
+
+### Steps.b
+
+- [x] Unlock the map
+- [x] impliment a Grid Conversion function
+- [x] Create a layer for the grid
+- [x] impliment the draw grid function to handle old recs and new recs
+- [x] create the moveend event
+- [x] clean up the code
