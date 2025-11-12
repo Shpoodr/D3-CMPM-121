@@ -47,18 +47,26 @@ const inventoryDiv = document.createElement("div");
 inventoryDiv.id = "inventory";
 document.body.append(inventoryDiv);
 
+/* Adding player movement buttons*/
+const movementButtons = document.createElement("div");
+movementButtons.id = "movement";
+document.body.append(movementButtons);
+
+movementButtons.innerHTML = `
+  <button id="btn-north">North</button>
+  <button id="btn-south">South</button>
+  <button id="btn-east">East</button>
+  <button id="btn-west">West</button>
+`;
+
+//HTML references
+const btnNorth = document.getElementById("btn-north");
+const btnSouth = document.getElementById("btn-south");
+const btnEast = document.getElementById("btn-east");
+const btnWest = document.getElementById("btn-west");
+
 //inventory state variable
 let playerInventory: number | null = null;
-
-//function for updating the player inventory UI
-function updatePlayerUI() {
-  if (playerInventory == null) {
-    inventoryDiv.innerHTML = "Holding: Nothing";
-  } else {
-    inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
-  }
-}
-updatePlayerUI();
 
 //class room log/lat for the map to reference
 const CLASSROOM_LATLNG = leaflet.latLng(
@@ -88,6 +96,48 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
 playerMarker.bindTooltip("That's you!!");
 playerMarker.addTo(map);
+
+//calling movePlayer to initialize the buttons
+btnNorth?.addEventListener("click", () => {
+  movePlayer(TILE_DEGREES, 0);
+});
+btnSouth?.addEventListener("click", () => {
+  movePlayer(-TILE_DEGREES, 0);
+});
+btnEast?.addEventListener("click", () => {
+  movePlayer(0, TILE_DEGREES);
+});
+btnWest?.addEventListener("click", () => {
+  movePlayer(0, -TILE_DEGREES);
+});
+
+/* IMPORTANT: ALL FUNCTIONS FOR GAME AFTER THIS POINT */
+//
+//
+
+//Handling player movement
+function movePlayer(latOffset: number, lngOffset: number) {
+  const currentPos = playerMarker.getLatLng();
+
+  const newPos = leaflet.latLng(
+    currentPos.lat + latOffset,
+    currentPos.lng + lngOffset,
+  );
+
+  //actually move the player and map when buttons are clicked
+  playerMarker.setLatLng(newPos);
+  map.panTo(newPos);
+}
+
+//function for updating the player inventory UI
+function updatePlayerUI() {
+  if (playerInventory == null) {
+    inventoryDiv.innerHTML = "Holding: Nothing";
+  } else {
+    inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
+  }
+}
+updatePlayerUI();
 
 /* 5) funtion to spawn in rectangles to the map */
 function drawGrid() {
@@ -162,6 +212,11 @@ function handleCellClick(i: number, j: number, cellRect: leaflet.Rectangle) {
       currentState.value *= 2;
       playerInventory = null;
     }
+  }
+
+  //handle win condition
+  if (currentState.value !== null && currentState.value >= 32) {
+    alert(`You win!!`);
   }
   updatePlayerUI();
   updateCellStyle(cellRect, currentState);

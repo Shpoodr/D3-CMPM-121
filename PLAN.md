@@ -36,8 +36,10 @@ to a more global system that uses the whole planet not a set area. Also will be 
 ### Steps.b
 
 - [x] Unlock the map
-- [x] impliment a Grid Conversion function
+- [x] Impliment a Grid Conversion function
 - [x] Create a layer for the grid
-- [x] impliment the draw grid function to handle old recs and new recs
-- [x] create the moveend event
-- [x] clean up the code
+- [x] Impliment the draw grid function to handle old recs and new recs
+- [x] Create the moveend event
+- [x] Clean up the code
+- [x] Add player movement
+- [x] Create/update the win condition
