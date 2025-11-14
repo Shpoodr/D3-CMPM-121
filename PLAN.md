@@ -43,3 +43,10 @@ to a more global system that uses the whole planet not a set area. Also will be 
 - [x] Clean up the code
 - [x] Add player movement
 - [x] Create/update the win condition
+
+### Steps.c
+
+Small amount of refactoring to be done. Making sure the memoryless implimentation no longer exists. Adding the FlyWeight/Memento Logic
+
+- [x] Get rid of the memoryless implimentation (stop clearing grid)
+- [x] Refactor createCell and handleCellClick

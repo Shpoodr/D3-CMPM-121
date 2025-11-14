@@ -143,7 +143,6 @@ updatePlayerUI();
 function drawGrid() {
   //clearing all old rectangles and making this memoryless
   gridLayer.clearLayers();
-  cellData.clear();
 
   const bounds = map.getBounds();
 
@@ -160,16 +159,20 @@ function drawGrid() {
 //create cell function that will handle all this logic and interation of cells
 function createCell(i: number, j: number) {
   const cellKey = `${i}, ${j}`;
+  let state: CellState;
 
-  //handling initial value of the tokens in caches
-  let initalValue: number | null = null;
-  if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-    const valueSituation = [i, j, "initialValue"].toString();
-    initalValue = Math.floor(luck(valueSituation) * 10) + 1;
+  if (cellData.has(cellKey)) {
+    state = cellData.get(cellKey)!;
+  } else {
+    //handling initial value of the tokens in caches
+    let initalValue: number | null = null;
+    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
+      const valueSituation = [i, j, "initialValue"].toString();
+      initalValue = Math.floor(luck(valueSituation) * 10) + 1;
+    }
+    //no longer saving data into cellData because of flyweight pattern
+    state = { value: initalValue };
   }
-
-  const state: CellState = { value: initalValue };
-  cellData.set(cellKey, state);
 
   //handle the drawing logic
   const cellBounds = cellToLatLngBounds(i, j);
@@ -178,15 +181,18 @@ function createCell(i: number, j: number) {
   updateCellStyle(cellRect, state);
 
   cellRect.on("click", () => {
-    handleCellClick(i, j, cellRect);
+    handleCellClick(i, j, cellRect, state);
   });
 }
 
 //function for handling all the clicks
-function handleCellClick(i: number, j: number, cellRect: leaflet.Rectangle) {
+function handleCellClick(
+  i: number,
+  j: number,
+  cellRect: leaflet.Rectangle,
+  state: CellState,
+) {
   const cellKey = `${i}, ${j}`;
-  const currentState = cellData.get(cellKey);
-  if (currentState === undefined) return;
 
   //check interaction distance
   const playerLatLng = playerMarker.getLatLng();
@@ -202,24 +208,27 @@ function handleCellClick(i: number, j: number, cellRect: leaflet.Rectangle) {
 
   if (playerInventory === null) {
     //picking up a token
-    if (currentState.value !== null) {
-      playerInventory! = currentState.value;
-      currentState.value = null;
+    if (state.value !== null) {
+      playerInventory! = state.value;
+      state.value = null;
+      cellData.set(cellKey, state);
     }
   } else {
     //for crafting
-    if (currentState.value !== null && currentState.value === playerInventory) {
-      currentState.value *= 2;
+    if (state.value !== null && state.value === playerInventory) {
+      state.value *= 2;
       playerInventory = null;
+      cellData.set(cellKey, state);
+
+      //handle win condition
+      if (state.value !== null && state.value >= 32) {
+        alert(`You win!!`);
+      }
     }
   }
-
-  //handle win condition
-  if (currentState.value !== null && currentState.value >= 32) {
-    alert(`You win!!`);
-  }
+  //update all the player ui
   updatePlayerUI();
-  updateCellStyle(cellRect, currentState);
+  updateCellStyle(cellRect, state);
 }
 
 //seperating the cell style into a function for better updates
