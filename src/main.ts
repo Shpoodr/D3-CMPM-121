@@ -57,6 +57,7 @@ movementButtons.innerHTML = `
   <button id="btn-south">South</button>
   <button id="btn-east">East</button>
   <button id="btn-west">West</button>
+  <button id="btn-new-game" style="margin-top: 10px;">New Game</button>
 `;
 
 //HTML references
@@ -64,6 +65,7 @@ const btnNorth = document.getElementById("btn-north");
 const btnSouth = document.getElementById("btn-south");
 const btnEast = document.getElementById("btn-east");
 const btnWest = document.getElementById("btn-west");
+const btnNewGame = document.getElementById("btn-new-game");
 
 //inventory state variable
 let playerInventory: number | null = null;
@@ -109,6 +111,16 @@ btnEast?.addEventListener("click", () => {
 });
 btnWest?.addEventListener("click", () => {
   movePlayer(0, -TILE_DEGREES);
+});
+btnNewGame?.addEventListener("click", () => {
+  if (
+    confirm(
+      "Are you sure you want to start a new game? All progress will be lost.",
+    )
+  ) {
+    localStorage.removeItem("myGameSave");
+    location.reload();
+  }
 });
 
 /* IMPORTANT: ALL FUNCTIONS FOR GAME AFTER THIS POINT */
