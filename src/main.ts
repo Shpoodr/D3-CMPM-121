@@ -15,7 +15,7 @@ import luck from "./_luck.ts";
 interface CellState {
   value: number | null;
 }
-const cellData = new Map<string, CellState>();
+let cellData = new Map<string, CellState>();
 
 //GamePlay perameters
 const TILE_DEGREES = 1e-4;
@@ -115,6 +115,35 @@ btnWest?.addEventListener("click", () => {
 //
 //
 
+//function to load a games save data that will be used on opening the page
+function loadGame() {
+  const saveData = localStorage.getItem("myGameSave");
+
+  //in the case that there is no save data
+  if (saveData !== null) {
+    const savedObject = JSON.parse(saveData);
+
+    //restore game states
+    playerInventory = savedObject.inventory;
+    cellData = new Map<string, CellState>(savedObject.cells);
+
+    console.log("Game loaded from save");
+  } else {
+    console.log("No Save file found");
+  }
+}
+
+//function that saves the player inventory and the cells
+function saveGame() {
+  const serializableCells = [...cellData.entries()];
+  const savedObject = {
+    inventory: playerInventory,
+    cells: serializableCells,
+  };
+
+  localStorage.setItem("myGameSave", JSON.stringify(savedObject));
+}
+
 //Handling player movement
 function movePlayer(latOffset: number, lngOffset: number) {
   const currentPos = playerMarker.getLatLng();
@@ -137,7 +166,6 @@ function updatePlayerUI() {
     inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
   }
 }
-updatePlayerUI();
 
 /* 5) funtion to spawn in rectangles to the map */
 function drawGrid() {
@@ -229,6 +257,7 @@ function handleCellClick(
   //update all the player ui
   updatePlayerUI();
   updateCellStyle(cellRect, state);
+  saveGame();
 }
 
 //seperating the cell style into a function for better updates
@@ -248,6 +277,8 @@ function updateCellStyle(cellRect: leaflet.Rectangle, state: CellState) {
   }
 }
 
-//telling the map to draw the dynamic grid
+//calling all important functions
+loadGame();
+updatePlayerUI();
 map.on("moveend", drawGrid);
 drawGrid();

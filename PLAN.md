@@ -50,3 +50,16 @@ Small amount of refactoring to be done. Making sure the memoryless implimentatio
 
 - [x] Get rid of the memoryless implimentation (stop clearing grid)
 - [x] Refactor createCell and handleCellClick
+
+### Step.d
+
+adding the ability to save game and add the facade game pattern and refactor the movement logic. Finally add the ability to toggle between UI
+
+- [] create a save game function
+- [] make sure save game is called for each game change
+- [] give players the option to load the game
+- [] give option for a New game
+- [] new movement interface
+- [] refactor button logic to support the facade game pattern
+- [] create the Geolocation logic
+- [] impliment the switch to swap between movement logic
