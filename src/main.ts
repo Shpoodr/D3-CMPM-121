@@ -17,6 +17,12 @@ interface CellState {
 }
 let cellData = new Map<string, CellState>();
 
+//new movement interface
+interface MovementController {
+  start(): void;
+  stop(): void;
+}
+
 //GamePlay perameters
 const TILE_DEGREES = 1e-4;
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -37,6 +43,77 @@ function cellToLatLngBounds(i: number, j: number): leaflet.LatLngBounds {
   return leaflet.latLngBounds(sw, ne);
 }
 
+//Handling player movement
+function movePlayer(latOffset: number, lngOffset: number) {
+  const currentPos = playerMarker.getLatLng();
+
+  const newPos = leaflet.latLng(
+    currentPos.lat + latOffset,
+    currentPos.lng + lngOffset,
+  );
+
+  //actually move the player and map when buttons are clicked
+  playerMarker.setLatLng(newPos);
+  map.panTo(newPos);
+}
+
+class ButtonMovementController implements MovementController {
+  //stored references
+  private northHandler = () => movePlayer(TILE_DEGREES, 0);
+  private southHandler = () => movePlayer(-TILE_DEGREES, 0);
+  private eastHandler = () => movePlayer(0, TILE_DEGREES);
+  private westHandler = () => movePlayer(0, -TILE_DEGREES);
+
+  start() {
+    movementButtons.style.display = "block";
+
+    //adding listeners
+    btnNorth?.addEventListener("click", this.northHandler);
+    btnSouth?.addEventListener("click", this.southHandler);
+    btnEast?.addEventListener("click", this.eastHandler);
+    btnWest?.addEventListener("click", this.westHandler);
+  }
+
+  stop() {
+    movementButtons.style.display = "none";
+
+    //Remove listeners
+    btnNorth?.removeEventListener("click", this.northHandler);
+    btnSouth?.removeEventListener("click", this.southHandler);
+    btnEast?.removeEventListener("click", this.eastHandler);
+    btnWest?.removeEventListener("click", this.westHandler);
+  }
+}
+
+class GeolocationMovementController implements MovementController {
+  private watchId: number | null = null;
+  start() {
+    //start watching the position
+    this.watchId = navigator.geolocation.watchPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      const newPos = leaflet.latLng(latitude, longitude);
+
+      //move the player based on coords
+      playerMarker.setLatLng(newPos);
+      map.panTo(newPos);
+    }, (error) => {
+      console.error("Geolocation error: ", error);
+      alert("unable to retrieve your location");
+    }, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+    });
+  }
+
+  stop() {
+    //stop watching to save battery
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+  }
+}
+
 /* 1) Created map html element for the site */
 const mapElement = document.createElement("div");
 mapElement.id = "map";
@@ -52,12 +129,21 @@ const movementButtons = document.createElement("div");
 movementButtons.id = "movement";
 document.body.append(movementButtons);
 
+/* adding a div to handle buttons that dont need to go away */
+const permanentControlsDiv = document.createElement("div");
+permanentControlsDiv.id = "perm-controls";
+document.body.append(permanentControlsDiv);
+
 movementButtons.innerHTML = `
   <button id="btn-north">North</button>
   <button id="btn-south">South</button>
   <button id="btn-east">East</button>
   <button id="btn-west">West</button>
+`;
+
+permanentControlsDiv.innerHTML = `
   <button id="btn-new-game" style="margin-top: 10px;">New Game</button>
+  <button id="btn-sensor">Switch to GPS</button>
 `;
 
 //HTML references
@@ -66,6 +152,7 @@ const btnSouth = document.getElementById("btn-south");
 const btnEast = document.getElementById("btn-east");
 const btnWest = document.getElementById("btn-west");
 const btnNewGame = document.getElementById("btn-new-game");
+const btnSensor = document.getElementById("btn-sensor");
 
 //inventory state variable
 let playerInventory: number | null = null;
@@ -76,17 +163,17 @@ const CLASSROOM_LATLNG = leaflet.latLng(
   -122.05703507501151,
 );
 
-/* 2) initialized the map with class room location */
+/* initialized the map with class room location */
 const map = leaflet.map(mapElement, {
   center: CLASSROOM_LATLNG,
   zoom: GAMEPLAY_ZOOM_LEVEL,
   zoomControl: false,
 });
 
-//creating a grifLayer for all the rects to be easily destoryed and added
+//creating a gridLayer for all the rects to be easily destoryed and added
 const gridLayer = leaflet.layerGroup().addTo(map);
 
-/* 3) added the background image to the map */
+/* added the background image to the map */
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
@@ -99,19 +186,20 @@ const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
 playerMarker.bindTooltip("That's you!!");
 playerMarker.addTo(map);
 
-//calling movePlayer to initialize the buttons
-btnNorth?.addEventListener("click", () => {
-  movePlayer(TILE_DEGREES, 0);
+btnSensor?.addEventListener("click", () => {
+  activeController.stop();
+
+  if (activeController === buttonController) {
+    activeController = geoController;
+    btnSensor.innerText = "Switch to Buttons";
+  } else {
+    activeController = buttonController;
+    btnSensor.innerText = "Switch to GPS";
+  }
+
+  activeController.start();
 });
-btnSouth?.addEventListener("click", () => {
-  movePlayer(-TILE_DEGREES, 0);
-});
-btnEast?.addEventListener("click", () => {
-  movePlayer(0, TILE_DEGREES);
-});
-btnWest?.addEventListener("click", () => {
-  movePlayer(0, -TILE_DEGREES);
-});
+
 btnNewGame?.addEventListener("click", () => {
   if (
     confirm(
@@ -126,6 +214,15 @@ btnNewGame?.addEventListener("click", () => {
 /* IMPORTANT: ALL FUNCTIONS FOR GAME AFTER THIS POINT */
 //
 //
+
+//function for updating the player inventory UI
+function updatePlayerUI() {
+  if (playerInventory == null) {
+    inventoryDiv.innerHTML = "Holding: Nothing";
+  } else {
+    inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
+  }
+}
 
 //function to load a games save data that will be used on opening the page
 function loadGame() {
@@ -154,29 +251,6 @@ function saveGame() {
   };
 
   localStorage.setItem("myGameSave", JSON.stringify(savedObject));
-}
-
-//Handling player movement
-function movePlayer(latOffset: number, lngOffset: number) {
-  const currentPos = playerMarker.getLatLng();
-
-  const newPos = leaflet.latLng(
-    currentPos.lat + latOffset,
-    currentPos.lng + lngOffset,
-  );
-
-  //actually move the player and map when buttons are clicked
-  playerMarker.setLatLng(newPos);
-  map.panTo(newPos);
-}
-
-//function for updating the player inventory UI
-function updatePlayerUI() {
-  if (playerInventory == null) {
-    inventoryDiv.innerHTML = "Holding: Nothing";
-  } else {
-    inventoryDiv.innerHTML = `Holding: Token (Value ${playerInventory})`;
-  }
 }
 
 /* 5) funtion to spawn in rectangles to the map */
@@ -249,7 +323,7 @@ function handleCellClick(
   if (playerInventory === null) {
     //picking up a token
     if (state.value !== null) {
-      playerInventory! = state.value;
+      playerInventory = state.value;
       state.value = null;
       cellData.set(cellKey, state);
     }
@@ -294,3 +368,10 @@ loadGame();
 updatePlayerUI();
 map.on("moveend", drawGrid);
 drawGrid();
+
+//controller instances
+const buttonController = new ButtonMovementController();
+const geoController = new GeolocationMovementController();
+
+let activeController: MovementController = buttonController;
+activeController.start();

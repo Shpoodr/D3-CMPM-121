@@ -59,7 +59,7 @@ adding the ability to save game and add the facade game pattern and refactor the
 - [x] make sure save game is called for each game change
 - [x] load the saved game when the link is opened
 - [x] give option for a New game
-- [] new movement interface
-- [] refactor button logic to support the facade game pattern
-- [] create the Geolocation logic
+- [x] new movement interface
+- [x] refactor button logic to support the facade game pattern
+- [x] create the Geolocation logic
 - [] impliment the switch to swap between movement logic

@@ -28,11 +28,10 @@
 
 #movement {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000; /* Make sure it's on top of the map */
+  bottom: 10px; /* Aligned to the bottom */
+  right: 10px; /* Aligned to the right */
+  z-index: 1000;
 
-  /* Simple styling */
   background: white;
   padding: 5px;
   border-radius: 5px;
@@ -41,7 +40,23 @@
 }
 
 #movement button {
-  display: block;
   width: 100%;
+  margin: 5px;
+}
+
+#perm-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+
+  background: white;
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+#perm-controls button {
   margin: 5px;
 }
