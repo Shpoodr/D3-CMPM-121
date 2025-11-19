@@ -62,4 +62,4 @@ adding the ability to save game and add the facade game pattern and refactor the
 - [x] new movement interface
 - [x] refactor button logic to support the facade game pattern
 - [x] create the Geolocation logic
-- [] impliment the switch to swap between movement logic
+- [x] impliment the switch to swap between movement logic

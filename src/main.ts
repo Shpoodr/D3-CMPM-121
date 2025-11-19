@@ -335,7 +335,7 @@ function handleCellClick(
       cellData.set(cellKey, state);
 
       //handle win condition
-      if (state.value !== null && state.value >= 32) {
+      if (state.value !== null && state.value >= 256) {
         alert(`You win!!`);
       }
     }
